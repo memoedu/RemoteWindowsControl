@@ -45,12 +45,14 @@ def find_students(status, fleet):
     return sorted(result,key=lambda item:item['hostName'])
 
 
-def verify_mcp(url, token):
+def verify_mcp(url, token, *, open_request=urllib.request.urlopen):
     payload=json.dumps({'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-11-25','capabilities':{},'clientInfo':{'name':'teacher-fleet-connection','version':'1'}}}).encode()
     request=urllib.request.Request(url,payload,{'Content-Type':'application/json','Accept':'application/json, text/event-stream','Authorization':'Bearer '+token})
-    with urllib.request.urlopen(request,timeout=15) as response:
+    with open_request(request,timeout=15) as response:
         reply=read_response(response,timeout=20)
-    if 'result' not in reply or 'serverInfo' not in reply['result']:
+    result = reply.get('result') if isinstance(reply, dict) and reply.get('id') == 1 else None
+    server = result.get('serverInfo') if isinstance(result, dict) else None
+    if not isinstance(server, dict) or not server.get('name'):
         raise RuntimeError('Authenticated MCP handshake failed')
 
 
